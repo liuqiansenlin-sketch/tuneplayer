@@ -1,0 +1,37 @@
+workflows:
+  tuneplayer-ios:
+    name: Build TunePlayer iOS
+    max_build_duration: 30
+    environment:
+      xcode: latest
+    scripts:
+      - name: Unpack offline ZIP
+        script: |
+          set -e
+          unzip -o ios_player_offline.zip -d project
+      - name: Install XcodeGen
+        script: |
+          set -e
+          brew install xcodegen
+      - name: Generate Xcode project
+        script: |
+          set -e
+          cd project
+          xcodegen
+      - name: Build unsigned app
+        script: |
+          set -e
+          cd project
+          xcodebuild -project TunePlayer.xcodeproj -scheme TunePlayer -configuration Release -sdk iphoneos -derivedDataPath build CODE_SIGNING_ALLOWED=NO CODE_SIGNING_IDENTITY="" build
+      - name: Package IPA
+        script: |
+          set -e
+          cd project
+          APP=$(find build -name 'TunePlayer.app' -type d)
+          echo "App: $APP"
+          rm -rf Payload TunePlayer.ipa
+          mkdir -p Payload
+          cp -R "$APP" Payload/
+          zip -r TunePlayer.ipa Payload
+    artifacts:
+      - project/TunePlayer.ipa
