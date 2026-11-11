@@ -1,0 +1,37 @@
+name: Build iOS App (from offline ZIP)
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: 检出仓库
+        uses: actions/checkout@v4
+      - name: 解压离线 ZIP
+        run: |
+          unzip -o ios_player_offline.zip -d project
+          ls -la project
+      - name: 安装 XcodeGen
+        run: brew install xcodegen
+      - name: 生成 Xcode 工程
+        working-directory: project
+        run: xcodegen
+      - name: 构建（不签名）
+        working-directory: project
+        run: |
+          xcodebuild -project TunePlayer.xcodeproj -scheme TunePlayer \
+            -configuration Release -sdk iphoneos \
+            -derivedDataPath build CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO CODE_SIGNING_IDENTITY="" build
+      - name: 收集产物
+        run: |
+          APP=$(find project/build -name 'TunePlayer.app' -type d)
+          cp -R "$APP" ./TunePlayer.app
+          tar -cvf artifact.tar TunePlayer.app
+      - name: 上传 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: TunePlayer-unsigned
+          path: artifact.tar
